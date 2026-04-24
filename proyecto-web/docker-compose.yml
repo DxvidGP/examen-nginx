@@ -1,0 +1,71 @@
+# ═══════════════════════════════════════════════════════════════
+#  docker-compose.yml
+#  Infraestructura: proxy nginx + 2 backends httpd + red interna
+# ═══════════════════════════════════════════════════════════════
+
+services:
+
+  # ── Proxy Inverso ──────────────────────────────────────────
+  proxy:
+    image: nginx:alpine                        # imagen oficial nginx
+    container_name: nginx-proxy
+    ports:
+      - "80:80"                                # ÚNICO puerto expuesto al host
+    volumes:
+      - ./nginx-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - webnet                                 # accede a los backends
+    depends_on:
+      - web1
+      - web2
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/nginx-status"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── Backend 1 ──────────────────────────────────────────────
+  web1:
+    image: httpd:alpine                        # imagen oficial Apache httpd
+    container_name: backend-1
+    # Sin "ports": no accesible directamente desde el host
+    volumes:
+      - webdata:/usr/local/apache2/htdocs      # volumen compartido
+    networks:
+      - webnet                                 # red interna únicamente
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── Backend 2 ──────────────────────────────────────────────
+  web2:
+    image: httpd:alpine                        # imagen oficial Apache httpd
+    container_name: backend-2
+    # Sin "ports": no accesible directamente desde el host
+    volumes:
+      - webdata:/usr/local/apache2/htdocs      # mismo volumen compartido
+    networks:
+      - webnet                                 # red interna únicamente
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+# ── Volumen compartido ────────────────────────────────────────
+volumes:
+  webdata:
+    name: webdata                              # volumen con nombre explícito
+
+# ── Red interna aislada ────────────────────────────────────────
+networks:
+  webnet:
+    name: webnet
+    driver: bridge                             # red Docker personalizada tipo bridge
+    # Los backends solo son alcanzables dentro de esta red;
+    # el host no puede conectarse directamente a web1/web2

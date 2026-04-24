@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Infraestructura Docker · Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink:       #0d0f12;
+      --paper:     #f4f0e8;
+      --warm:      #f0ebe0;
+      --accent:    #c84b2f;
+      --accent2:   #1a3a5c;
+      --rule:      #0d0f1220;
+      --mono:      'DM Mono', monospace;
+      --serif:     'DM Serif Display', serif;
+      --sans:      'DM Sans', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-weight: 300;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ─── GRAIN OVERLAY ─── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 9999; opacity: .5;
+    }
+
+    /* ─── HEADER BAR ─── */
+    .topbar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 2.5rem;
+      border-bottom: 1px solid var(--rule);
+      position: sticky; top: 0;
+      background: var(--paper);
+      z-index: 100;
+      backdrop-filter: blur(4px);
+    }
+    .topbar .logo {
+      font-family: var(--mono);
+      font-size: .75rem;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .topbar nav a {
+      font-family: var(--mono); font-size: .72rem;
+      letter-spacing: .1em; text-transform: uppercase;
+      text-decoration: none; color: var(--ink);
+      margin-left: 2rem; opacity: .6;
+      transition: opacity .2s;
+    }
+    .topbar nav a:hover { opacity: 1; }
+
+    /* ─── HERO ─── */
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 88vh;
+      border-bottom: 1px solid var(--rule);
+    }
+    .hero-text {
+      padding: 5rem 3rem 4rem 2.5rem;
+      display: flex; flex-direction: column; justify-content: center;
+      border-right: 1px solid var(--rule);
+    }
+    .hero-text .eyebrow {
+      font-family: var(--mono); font-size: .7rem;
+      letter-spacing: .2em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 1.5rem;
+    }
+    .hero-text h1 {
+      font-family: var(--serif);
+      font-size: clamp(3rem, 6vw, 5.5rem);
+      line-height: 1.05;
+      margin-bottom: 2rem;
+    }
+    .hero-text h1 em { color: var(--accent); font-style: italic; }
+    .hero-text p {
+      font-size: 1.05rem; max-width: 42ch;
+      color: var(--ink); opacity: .7; margin-bottom: 2.5rem;
+    }
+    .btn-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .btn {
+      display: inline-block; padding: .7rem 1.6rem;
+      font-family: var(--mono); font-size: .72rem;
+      letter-spacing: .12em; text-transform: uppercase;
+      text-decoration: none; border: 1px solid currentColor;
+      transition: background .2s, color .2s;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-primary:hover { background: transparent; color: var(--accent); }
+    .btn-ghost { color: var(--ink); }
+    .btn-ghost:hover { background: var(--ink); color: var(--paper); }
+
+    .hero-visual {
+      background: var(--accent2);
+      position: relative; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hero-visual svg {
+      width: 55%; opacity: .18;
+      position: absolute;
+    }
+    .arch-diagram {
+      position: relative; z-index: 2;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0; color: #fff;
+      width: 80%; max-width: 340px;
+    }
+    .arch-box {
+      padding: .8rem 1.5rem; border: 1px solid rgba(255,255,255,.3);
+      background: rgba(255,255,255,.07);
+      font-family: var(--mono); font-size: .72rem;
+      letter-spacing: .08em; text-align: center;
+      width: 100%;
+      backdrop-filter: blur(6px);
+      transition: background .3s;
+    }
+    .arch-box:hover { background: rgba(255,255,255,.15); }
+    .arch-box.proxy { background: rgba(200,75,47,.4); border-color: rgba(200,75,47,.8); }
+    .arch-connector {
+      display: flex; flex-direction: column; align-items: center;
+      color: rgba(255,255,255,.4); font-size: .6rem; padding: .3rem 0;
+    }
+    .arch-connector span { font-family: var(--mono); }
+    .arch-backends { display: flex; gap: 1rem; width: 100%; }
+    .arch-backends .arch-box { flex: 1; }
+
+    /* ─── BACKEND BADGE (populated by JS) ─── */
+    #backend-badge {
+      display: inline-block;
+      margin-top: .5rem;
+      font-family: var(--mono); font-size: .68rem;
+      letter-spacing: .1em; text-transform: uppercase;
+      background: var(--accent); color: #fff;
+      padding: .25rem .8rem;
+      opacity: 0;
+      transition: opacity .5s;
+    }
+
+    /* ─── SECTIONS ─── */
+    section { padding: 5rem 2.5rem; border-bottom: 1px solid var(--rule); }
+    .section-label {
+      font-family: var(--mono); font-size: .68rem;
+      letter-spacing: .2em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 3rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px; background: var(--rule);
+    }
+
+    /* ─── FEATURES GRID ─── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0;
+      border: 1px solid var(--rule);
+    }
+    .feature-card {
+      padding: 2.5rem 2rem;
+      border-right: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+      transition: background .2s;
+    }
+    .feature-card:hover { background: var(--warm); }
+    .feature-card .icon {
+      font-size: 1.5rem; margin-bottom: 1rem;
+    }
+    .feature-card h3 {
+      font-family: var(--serif); font-size: 1.4rem;
+      margin-bottom: .6rem;
+    }
+    .feature-card p { font-size: .88rem; opacity: .65; }
+
+    /* ─── IMAGE SECTION ─── */
+    .image-section {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    }
+    .image-wrap {
+      overflow: hidden;
+      border-right: 1px solid var(--rule);
+      min-height: 400px;
+      background: var(--accent2);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    /* SVG illustration as "image" */
+    .image-wrap svg { width: 80%; max-width: 400px; }
+    .image-caption {
+      padding: 3rem 3rem;
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .image-caption h2 {
+      font-family: var(--serif); font-size: clamp(2rem, 3.5vw, 3rem);
+      line-height: 1.1; margin-bottom: 1.5rem;
+    }
+    .image-caption p { font-size: .92rem; opacity: .68; max-width: 44ch; }
+
+    /* ─── MULTIMEDIA ─── */
+    .media-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+    }
+    .media-item h3 {
+      font-family: var(--mono); font-size: .72rem;
+      letter-spacing: .15em; text-transform: uppercase;
+      margin-bottom: 1rem; opacity: .5;
+    }
+    .media-item video,
+    .media-item audio {
+      width: 100%; display: block;
+      border: 1px solid var(--rule);
+      background: var(--warm);
+    }
+    .audio-wrap {
+      padding: 2rem; background: var(--warm);
+      border: 1px solid var(--rule);
+      display: flex; flex-direction: column; gap: 1rem;
+    }
+    .audio-wrap audio { width: 100%; }
+    .audio-label {
+      font-family: var(--serif); font-size: 1.1rem;
+    }
+
+    /* Visualizador animado como "multimedia" */
+    .viz-canvas {
+      width: 100%; height: 200px;
+      background: var(--ink);
+      display: flex; align-items: center; justify-content: center;
+      gap: 4px;
+      padding: 1rem;
+      border: 1px solid var(--rule);
+    }
+    .viz-bar {
+      flex: 1; max-width: 18px;
+      background: var(--accent);
+      border-radius: 2px 2px 0 0;
+      animation: pulse var(--d, .8s) ease-in-out infinite alternate;
+    }
+    @keyframes pulse {
+      from { height: 10%; opacity: .4; }
+      to   { height: var(--h, 60%); opacity: 1; }
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      padding: 2rem 2.5rem;
+      display: flex; justify-content: space-between; align-items: center;
+      font-family: var(--mono); font-size: .68rem;
+      letter-spacing: .1em; text-transform: uppercase; opacity: .4;
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 760px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-visual { min-height: 340px; }
+      .image-section { grid-template-columns: 1fr; }
+      .media-grid { grid-template-columns: 1fr; }
+      .topbar nav { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <span class="logo">Docker·Infra</span>
+  <nav>
+    <a href="#arquitectura">Arquitectura</a>
+    <a href="#multimedia">Multimedia</a>
+    <a href="#info">Info</a>
+  </nav>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-text">
+    <span class="eyebrow">Infraestructura · Docker Compose</span>
+    <h1>Alta<br>disponibilidad<br>con <em>nginx</em></h1>
+    <p>
+      Dos backends en red interna, balanceo de carga automático
+      y un proxy inverso como único punto de entrada. Todo orquestado
+      con Docker Compose e imágenes oficiales.
+    </p>
+    <div>
+      <span id="backend-badge">Backend: –</span>
+    </div>
+    <div class="btn-group" style="margin-top:1.5rem">
+      <a href="#arquitectura" class="btn btn-primary">Ver arquitectura</a>
+      <a href="#multimedia" class="btn btn-ghost">Demo multimedia</a>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <!-- Background decoration -->
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <defs><pattern id="g" width="20" height="20" patternUnits="userSpaceOnUse">
+        <circle cx="10" cy="10" r="1" fill="white"/>
+      </pattern></defs>
+      <rect width="200" height="200" fill="url(#g)"/>
+    </svg>
+    <!-- Architecture diagram -->
+    <div class="arch-diagram">
+      <div class="arch-box proxy">🌐 &nbsp;nginx proxy&nbsp; :80</div>
+      <div class="arch-connector"><span>⬇ balanceo round-robin ⬇</span></div>
+      <div class="arch-backends">
+        <div class="arch-box">httpd<br>backend-1</div>
+        <div class="arch-box">httpd<br>backend-2</div>
+      </div>
+      <div class="arch-connector"><span>↕ volumen compartido ↕</span></div>
+      <div class="arch-box" style="font-size:.65rem; opacity:.7">📁 &nbsp;/usr/local/apache2/htdocs</div>
+    </div>
+  </div>
+</section>
+
+<!-- ARQUITECTURA -->
+<section id="arquitectura">
+  <div class="section-label">Componentes</div>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="icon">🔀</div>
+      <h3>Proxy Inverso</h3>
+      <p>nginx escucha en el puerto 80 del host. Distribuye el tráfico en round-robin e inyecta la cabecera <code>X-Backend-Server</code> para identificar qué instancia respondió.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">⚙️</div>
+      <h3>Backends Apache</h3>
+      <p>Dos contenedores <code>httpd:alpine</code> sirven contenido estático desde el volumen compartido. No exponen ningún puerto al exterior.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🔒</div>
+      <h3>Red Aislada</h3>
+      <p>Los backends viven en la red interna <code>webnet</code>. Solo el proxy tiene acceso a ambas redes, actuando de DMZ.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📦</div>
+      <h3>Volumen Compartido</h3>
+      <p>El contenido web reside en un volumen Docker montado en ambos backends. Actualiza una sola vez, sirve desde todas las instancias.</p>
+    </div>
+  </div>
+</section>
+
+<!-- IMAGEN -->
+<section class="image-section" id="info">
+  <div class="image-wrap">
+    <!-- SVG como elemento imagen ilustrativo -->
+    <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#1a3a5c"/>
+          <stop offset="100%" stop-color="#0d0f12"/>
+        </linearGradient>
+        <linearGradient id="acc" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#c84b2f"/>
+          <stop offset="100%" stop-color="#e07050"/>
+        </linearGradient>
+      </defs>
+      <rect width="400" height="300" fill="url(#bg)" rx="4"/>
+      <!-- Server rack illustration -->
+      <rect x="160" y="30" width="80" height="240" rx="4" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+      <!-- proxy box -->
+      <rect x="170" y="45" width="60" height="28" rx="2" fill="url(#acc)" opacity=".9"/>
+      <text x="200" y="63" text-anchor="middle" fill="white" font-size="9" font-family="monospace">PROXY</text>
+      <!-- lines -->
+      <line x1="200" y1="73" x2="130" y2="110" stroke="rgba(255,255,255,.3)" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="200" y1="73" x2="270" y2="110" stroke="rgba(255,255,255,.3)" stroke-width="1" stroke-dasharray="4,3"/>
+      <!-- backend boxes -->
+      <rect x="90" y="110" width="80" height="60" rx="2" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.2)" stroke-width="1"/>
+      <text x="130" y="134" text-anchor="middle" fill="white" font-size="8" font-family="monospace">httpd</text>
+      <text x="130" y="148" text-anchor="middle" fill="rgba(255,255,255,.5)" font-size="7" font-family="monospace">backend-1</text>
+      <rect x="230" y="110" width="80" height="60" rx="2" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.2)" stroke-width="1"/>
+      <text x="270" y="134" text-anchor="middle" fill="white" font-size="8" font-family="monospace">httpd</text>
+      <text x="270" y="148" text-anchor="middle" fill="rgba(255,255,255,.5)" font-size="7" font-family="monospace">backend-2</text>
+      <!-- volume bar -->
+      <rect x="90" y="190" width="220" height="22" rx="2" fill="rgba(200,75,47,.25)" stroke="rgba(200,75,47,.5)" stroke-width="1"/>
+      <text x="200" y="205" text-anchor="middle" fill="rgba(255,255,255,.7)" font-size="8" font-family="monospace">📁 webdata (volumen compartido)</text>
+      <!-- network labels -->
+      <text x="30" y="145" fill="rgba(255,255,255,.25)" font-size="8" font-family="monospace" transform="rotate(-90,30,145)">webnet</text>
+      <!-- blinking dot -->
+      <circle cx="200" cy="35" r="4" fill="#c84b2f">
+        <animate attributeName="opacity" values="1;0.2;1" dur="1.5s" repeatCount="indefinite"/>
+      </circle>
+    </svg>
+  </div>
+  <div class="image-caption">
+    <div class="section-label">Diagrama</div>
+    <h2>Arquitectura de red interna</h2>
+    <p>
+      El proxy nginx es el único contenedor accesible desde el host. Los backends
+      residen en la red <strong>webnet</strong>, completamente aislados del exterior.
+      El volumen <strong>webdata</strong> garantiza consistencia de contenido
+      entre ambas instancias.
+    </p>
+    <p style="margin-top:1rem; font-family:var(--mono); font-size:.72rem; opacity:.5">
+      ← Diagrama SVG embebido como elemento &lt;img&gt; equivalente
+    </p>
+  </div>
+</section>
+
+<!-- MULTIMEDIA -->
+<section id="multimedia">
+  <div class="section-label">Multimedia</div>
+  <div class="media-grid">
+
+    <!-- Visualizador animado CSS (elemento multimedia interactivo) -->
+    <div class="media-item">
+      <h3>Visualizador de red · CSS Animation</h3>
+      <div class="viz-canvas" id="viz"></div>
+      <p style="font-size:.78rem; opacity:.5; margin-top:.6rem; font-family:var(--mono)">
+        Simulación visual del tráfico entre proxy y backends
+      </p>
+    </div>
+
+    <!-- Video embed (HTML5 video con fuente de dominio público) -->
+    <div class="media-item">
+      <h3>Video · HTML5 &lt;video&gt;</h3>
+      <video controls poster="" style="min-height:160px; background:#0d0f12;">
+        <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+        <p style="color:white; padding:1rem; font-family:monospace; font-size:.75rem;">
+          Tu navegador no soporta HTML5 video.
+        </p>
+      </video>
+      <p style="font-size:.78rem; opacity:.5; margin-top:.6rem; font-family:var(--mono)">
+        Elemento &lt;video&gt; con controles nativos del navegador
+      </p>
+    </div>
+
+    <!-- Audio element -->
+    <div class="media-item">
+      <h3>Audio · HTML5 &lt;audio&gt;</h3>
+      <div class="audio-wrap">
+        <span class="audio-label">🎵 Pista de demostración</span>
+        <audio controls>
+          <source src="https://www.w3schools.com/html/horse.ogg" type="audio/ogg">
+          <source src="https://www.w3schools.com/html/horse.mp3" type="audio/mpeg">
+          Tu navegador no soporta audio HTML5.
+        </audio>
+      </div>
+      <p style="font-size:.78rem; opacity:.5; margin-top:.6rem; font-family:var(--mono)">
+        Elemento &lt;audio&gt; con controles y múltiples formatos
+      </p>
+    </div>
+
+    <!-- Info card -->
+    <div class="media-item">
+      <h3>Cabeceras HTTP · Backend activo</h3>
+      <div style="background:var(--ink); color:#fff; padding:1.5rem; font-family:var(--mono); font-size:.75rem; line-height:1.9; border:1px solid var(--rule); min-height:160px;">
+        <span style="color:rgba(255,255,255,.35)">HTTP/1.1 200 OK</span><br>
+        <span style="color:#6fcf97">X-Backend-Server:</span> <span id="hdr-backend">–</span><br>
+        <span style="color:#6fcf97">X-Proxy:</span> nginx-lb<br>
+        <span style="color:#6fcf97">Content-Type:</span> text/html<br>
+        <span style="color:rgba(255,255,255,.35)">Connection: keep-alive</span>
+      </div>
+      <p style="font-size:.78rem; opacity:.5; margin-top:.6rem; font-family:var(--mono)">
+        Cabeceras añadidas por el proxy para trazar el backend
+      </p>
+    </div>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span>Docker Compose · nginx proxy · httpd backends</span>
+  <span id="footer-backend">Sirviendo desde: –</span>
+</footer>
+
+<script>
+  // ── Visualizador de barras animadas ──
+  const viz = document.getElementById('viz');
+  const heights = [30,55,80,45,70,35,90,60,40,75,50,85,25,65,50];
+  const delays =  [0,.1,.2,.15,.05,.3,.08,.25,.12,.18,.07,.22,.14,.3,.06];
+  heights.forEach((h, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'viz-bar';
+    bar.style.setProperty('--h', h + '%');
+    bar.style.setProperty('--d', (0.5 + Math.random() * 0.7).toFixed(2) + 's');
+    bar.style.animationDelay = delays[i] + 's';
+    bar.style.height = '20%';
+    viz.appendChild(bar);
+  });
+
+  // ── Leer cabecera X-Backend-Server ──
+  // En producción con nginx se inyecta la cabecera real.
+  // Aquí simulamos detectarla vía fetch en la misma página.
+  async function detectBackend() {
+    try {
+      const res = await fetch(window.location.href, { method: 'HEAD', cache: 'no-store' });
+      const backend = res.headers.get('X-Backend-Server') || 'backend-desconocido';
+      document.getElementById('backend-badge').textContent = 'Backend: ' + backend;
+      document.getElementById('backend-badge').style.opacity = '1';
+      document.getElementById('hdr-backend').textContent = backend;
+      document.getElementById('footer-backend').textContent = 'Sirviendo desde: ' + backend;
+    } catch {
+      document.getElementById('backend-badge').textContent = 'Proxy activo';
+      document.getElementById('backend-badge').style.opacity = '1';
+    }
+  }
+  detectBackend();
+</script>
+</body>
+</html>
